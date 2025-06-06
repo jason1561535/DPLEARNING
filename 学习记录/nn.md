@@ -144,3 +144,114 @@ writer.close()
 ```
 
 
+## 4.Sequential快速搭建神经网络
+假设我们搭建如下网络  
+![img_3.png](img_3.png)
+我们一共做了   
+①3次（卷积+池化）-> ②Flatten拉平 ->③两次Liner线性化
+
+①卷积+池化    
+&emsp;卷积Conv2d输入计算公式：  
+![img_4.png](img_4.png)  
+&emsp;其中stride步长默认为1，dilation默认为1
+池化MaxPool2d输入计算公式：  
+![img_5.png](img_5.png)
+&emsp;其中stride步长默认为kernel边长，dilation默认为1
+> ***注意***
+> ①卷积如果不改变层的大小：那么只需要管padding和kernel比例关系
+> Conv2d： 2padding = kernel-1
+> ②池化使层面积变为1/4：只需要保证kernel=2，其他为默认
+> MaxPool2d： 2padding = kernel
+
+②Flatten
+Just Flatten
+```python
+from torch.nn import Flatten
+    Flatten()
+```
+
+③Liner线性化（记得要先拉伸）
+目前来看Liner只要管in_features和out_features
+代码如下
+```python
+from torch.nn import Linear
+    Linear(1024,64)
+    Linear(64,10)
+```
+**总体代码**
+```python
+#Squential快速搭建神经网络
+import torch
+from torch import nn
+from torch.nn import Conv2d ,MaxPool2d,Flatten,Linear
+from torch.utils.tensorboard import SummaryWriter
+
+
+class Tudui(nn.Module):
+    def __init__(self):
+        super(Tudui, self).__init__()
+        #->INPUT 3*32*32
+        #->CONV2D Ker5*5 32*32*32
+        #->MP ker2*2 32*16*16
+        #->Conv2d ker5*5 32*16*16
+        #->MP ker2*2 32*8*8
+        #->Conv2d ker5*5 64*8*8
+        #->MP KER2*2 64*4*4
+        #->Flatten 64
+        #Fullyconnected 10
+
+        # self.conv1 = Conv2d(3,32,5,padding=2)
+        # #参考Conv2d计算公式
+        # self.maxpool1 = nn.MaxPool2d(2)
+        # self.conv2 = Conv2d(32,32,5,padding=2)
+        # self.maxpool2 = nn.MaxPool2d(2)
+        # self.conv3 = Conv2d(32,64,5,padding=2)
+        # self.maxpool3 = nn.MaxPool2d(2)
+        # self.flatten = nn.Flatten()
+        # self.linear1= nn.Linear(1024,64)
+        # self.linear2 = nn.Linear(64,10)
+
+        #尝试用Sequential简便构建网络
+        self.model1 = nn.Sequential(
+            Conv2d(3,32,5,padding=2),
+            MaxPool2d(2),
+            Conv2d(32,32,5,padding=2),
+            MaxPool2d(2),
+            Conv2d(32,64,5,padding=2),
+            MaxPool2d(2),
+            Flatten(),
+            Linear(1024,64),
+            Linear(64,10)
+        )
+
+    def forward(self, x):
+        # x = self.conv1(x)
+        # x = self.maxpool1(x)
+        # x = self.conv2(x)
+        # x = self.maxpool2(x)
+        # x = self.conv3(x)
+        # x = self.maxpool3(x)
+        # x = self.flatten(x)
+        # x = self.linear1(x)
+        # output = self.linear2(x)
+        output = self.model1(x)
+        return output
+#测试方法：
+tudui = Tudui()
+print(tudui)
+
+#检验网络
+input = torch.ones((64,3,32,32))
+output = tudui(input)
+print(output.shape)
+
+writer = SummaryWriter("logs_Seq")
+writer.add_graph(tudui, input)
+writer.close()
+
+###运行结果：torch.Size([64, 10])
+```
+结果为：torch.Size([64, 10])
+
+可以看到Sequential节省了很多空间，也使得代码可读性更好
+
