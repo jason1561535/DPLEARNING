@@ -1,4 +1,3 @@
-from P12_torchnn.torchnn import dataloader
 
 # torch.nn 卷积神经网络
 ## 1.Dataset 和 Dataloader
@@ -10,8 +9,9 @@ import torchvision
 #此处不做详细介绍，只做土堆引入torchvision中的数据集
 dataset = torchvision.datasets.CIFAR10("../data",train=False,transform=torchvision.transforms.ToTensor(),download=False)
 dataloader = DataLoader(dataset,batch_size=64,shuffle=True)
-```
+```  
 
+---
 
 ## 2.常见神经网络模版nn.module 和 nn.Conv2d
 > 参考P12_torchnn文件
@@ -69,6 +69,7 @@ for data in dataloader:
 #记得close，还不知道为什么
 writer.close()
 ```  
+---
 
 ## 3.最大池化MaxPooling
 **_最大池化的作用：保留最大特征，减少数据量_**
@@ -142,7 +143,7 @@ for data in dataloader:
     step += 1
 writer.close()
 ```
-
+---
 
 ## 4.Sequential快速搭建神经网络
 假设我们搭建如下网络  
@@ -254,4 +255,87 @@ writer.close()
 结果为：torch.Size([64, 10])
 
 可以看到Sequential节省了很多空间，也使得代码可读性更好
+
+---
+
+## 5.LOSS AND BP （Opitim）
+> 本节课重点
+> ①定义Loss
+> ②使用优化器Optim进行反向传播  
+
+我们需要在data输入进模型之后  
+**计算Loss->重置梯度->反向传播->优化更新参数**
+
+```python
+tudui = Tudui()
+loss = CrossEntropyLoss()#定义XXloss：：torch.nn
+optim = torch.optim.SGD(tudui.parameters(),lr=0.01)#定义优化器，用于反向传播
+
+for epoch in range(20):#epoch代表学习的轮数
+    print("第"+str(epoch)+"轮训练")
+    running_loss = 0.0
+    for data in dataloader:
+        imgs , targets = data
+        outputs=tudui(imgs)
+        # print(outputs)
+        # print(targets)
+        result_loss = loss(outputs, targets)
+        optim.zero_grad()#清空梯度
+        result_loss.backward()#反向传播
+        optim.step()#对参数调优
+        running_loss += result_loss
+    print(running_loss)
+```
+---
+## 6.Pretrained Models  
+我们可以下载预训练好的模型进行修改
+```python
+import torchvision
+
+vgg16_false = torchvision.models.vgg16(pretrained=False)
+vgg16_true = torchvision.models.vgg16(pretrained=True)
+print("ok")
+
+print(vgg16_true)
+```
+pytorch会自动下载网络模型到C盘，我们需要修改环境变量，添加一个环境变量TORCH_HOME，然后***重启***
+![img_6.png](img_6.png)
+结果如下
+```python
+...
+  (classifier): Sequential(
+    (0): Linear(in_features=25088, out_features=4096, bias=True)
+    (1): ReLU(inplace=True)
+    (2): Dropout(p=0.5, inplace=False)
+    (3): Linear(in_features=4096, out_features=4096, bias=True)
+    (4): ReLU(inplace=True)
+    (5): Dropout(p=0.5, inplace=False)
+    (6): Linear(in_features=4096, out_features=1000, bias=True)
+  )
+)
+```
+我们这里可以看到VGG16的整体结构，最后是进行1000种分类  
+当未来我们想应用这种模型，或者进行修改时，我们可以使用  
+add_module('module_diyname',nn.xx)#for example nn.linear nn.MaxPool2d
+代码如下
+```python
+vgg16_true.add_module('add_linear',nn.Linear(1000,10))
+print(vgg16_true)
+#vgg16_true.classifier.add_module('add_linear',nn.Linear(1000,10))
+#classifier的区别就是最后显示可以在classifier内部添加module
+
+  # (classifier): Sequential(
+  #   (0): Linear(in_features=25088, out_features=4096, bias=True)
+  #   (1): ReLU(inplace=True)
+  #   (2): Dropout(p=0.5, inplace=False)
+  #   (3): Linear(in_features=4096, out_features=4096, bias=True)
+  #   (4): ReLU(inplace=True)
+  #   (5): Dropout(p=0.5, inplace=False)
+  #   (6): Linear(in_features=4096, out_features=1000, bias=True)
+  # )
+  # (add_linear): Linear(in_features=1000, out_features=10, bias=True)
+```
+---
+
+## 7.
 
