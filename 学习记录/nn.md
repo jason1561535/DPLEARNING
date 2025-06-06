@@ -288,7 +288,7 @@ for epoch in range(20):#epoch代表学习的轮数
 ```
 ---
 ## 6.Pretrained Models  
-我们可以下载预训练好的模型进行修改
+* 我们可以下载预训练好的模型进行修改
 ```python
 import torchvision
 
@@ -335,7 +335,54 @@ print(vgg16_true)
   # )
   # (add_linear): Linear(in_features=1000, out_features=10, bias=True)
 ```
+* 如果想修改单独层(例如classifier中的层06)
+```python
+print(vgg16_false)
+vgg16_false.classifier[6]=nn.Linear(4096,10)
+print(vgg16_false)
+#原本层[06] input:4096 ,output:1000
+#修改线性层[06] input 4096 , output:10
+```
+
 ---
 
-## 7.
+## 7. 保存模型
+保存模型的两种方式
+1.保存模型结构+模型参数
+**保存**
+```python
+import torch
+import torchvision
+#保存方式1,保存   模型结构+模型参数
+torch.save(vgg16,'../models_saved/vgg16_method1.pth')
+```
+**读取**
+```python
+import torch
+import torchvision
 
+#加载1->对应->保存1 读取模型+参数
+model = torch.load('../models_saved/vgg16_method1.pth',weights_only= False)
+print(model)
+#方式1存在陷阱
+#你每次都需要重新定义你自己的模型类
+```
+---
+2.以字典形式保存参数
+**保存**
+```python
+#保存方式2，保存   模型参数（官方推荐）
+torch.save(vgg16.state_dict(),'../models_saved/vgg16_method2.pth')
+```
+**读取**
+```python
+import torch
+import torchvision
+#加载2->对应->保存2 读取字典
+vgg16 = torchvision.models.vgg16()
+vgg16.load_state_dict(torch.load('../models_saved/vgg16_method2.pth'))
+# model = torch.load('../models_saved/vgg16_method2.pth',weights_only= False)
+```
+---
+
+## 8.
