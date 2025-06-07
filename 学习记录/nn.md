@@ -385,4 +385,136 @@ vgg16.load_state_dict(torch.load('../models_saved/vgg16_method2.pth'))
 ```
 ---
 
-## 8.
+## 8.完整的模型训练套路P18
+①提前编写网络架构  
+我们可以创建一个model.py文件，把我们搭建的网络架构存放在里面。
+例如：
+>Project  
+> --dir1  
+> ----file1.py  
+> --model  
+> ----model.py    
+
+* 当我想在file1.py读取另一个文件夹的model文件时
+```python
+import sys
+sys.path.append('../')
+from model.model import CIFAR_10#CIFAR_10是自己定义好的模型
+```
+
+写完一个模型框架后，记得测试它的输入输出shape
+```python
+#有关CIFAR_10怎么搭建的看主目录下的model.py文件
+if __name__ == '__main__':
+    nerwork = CIFAR_10()
+    input = torch.ones((64,3,32,32))
+    output = nerwork(input)
+    print(output.shape)
+```
+
+②训练的整体架构
+* 准备数据集：Dataset/Dataloader↓
+```python
+#准备数据集
+train_data = torchvision.datasets.CIFAR10(root='../data', train=True,
+                                          download=True, transform=transforms.ToTensor())
+test_data = torchvision.datasets.CIFAR10(root='../data', train=False, transform=transforms.ToTensor(), download=True)
+
+#数据集的长度length
+train_data_len = len(train_data)
+test_data_len = len(test_data)
+print("训练数据集长度：{}".format(train_data_len))
+print("测试数据集长度：{}".format(test_data_len))
+
+#加载数据
+train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
+test_dataloader = DataLoader(test_data, batch_size=64, shuffle=True)
+```
+* 搭建网络：建议放在统一文件内
+```python
+import sys
+sys.path.append('../')
+from model import CIFAR_10
+
+#或使用外部导入的model
+network = CIFAR_10()
+```
+
+* 创建损失函数和优化器：    
+
+在每次训练过程中    
+1.计算损失 - 2.优化器梯度清零 - 3.损失反向传播 - 4.优化器步进优化参数
+```python
+#定义优化器和损失
+#创建损失函数
+loss_fn = nn.CrossEntropyLoss()
+#优化器
+lr = 1e-2
+optimizer = torch.optim.SGD(network.parameters(), lr)
+
+#训练轮数↓训练过程
+epoch = 10
+writer = SummaryWriter("train_prog")
+
+for i in range(epoch):
+    print("--------第{}轮训练开始--------".format(i+1))
+    #训练步骤
+    for data in train_dataloader:
+        imgs , targets = data
+        outputs = network(imgs)
+        loss = loss_fn(outputs, targets)
+
+        #开始优化
+        #1.梯度清零
+        optimizer.zero_grad()
+        #返现传播
+        loss.backward()
+        #优化器改进参数
+        optimizer.step()
+
+        total_train_step += 1
+        if total_train_step % 100 == 0:
+            print("训练次数：{}，Loss:{}".format(total_train_step, loss.item()))
+            writer.add_scalar("train_loss", loss.item(), total_train_step)
+
+    #每训练完一轮，查看正确率
+    total_test_loss = 0
+    total_correct = 0
+    #确保没有修改参数
+    with torch.no_grad():
+        for data in test_dataloader:
+            imgs , targets = data
+            outputs = network(imgs)
+            loss = loss_fn(outputs, targets)
+            total_test_loss += loss.item()
+            correct = (outputs.argmax(1) == targets).sum()
+            total_correct += correct
+    print("测试集的LOSS:{}".format(total_test_loss))
+    print("测试集上的正确率：{}".format(total_correct/test_data_len))
+    writer.add_scalar("test_loss", total_test_loss, total_test_step)
+    writer.add_scalar("test_accuracy", total_correct/test_data_len, total_test_step)
+    total_test_step+=1
+
+    # 每训练完一轮保存模型
+    torch.save(network.state_dict(), "../models_saved/CIFAR10_TRAIN{}.pth".format(i+1))
+    print("模型已保存在CIFAR10_TRAIN{}.pth".format(i+1))
+
+writer.close()
+```
+此处有个小细节：关于tensor.argmax()
+argmax可以直接指出向量中最大数的下标（0开始）
+argmax（0/1）代表观察方向，如果是0竖着看，1横着看
+![img_7.png](img_7.png)
+```python
+import torch
+ouput = torch.tensor([[0.5,0.6],
+                      [0.2,0.5]])
+print(ouput.argmax(1))
+```
+结果为tensor([1, 1])，说明横着看，第一行0.6大，第二行0.5大  
+所以上面有
+> correct = (outputs.argmax(1) == targets).sum()
+            total_correct += correct  
+> 因为上述是个分类问题，会给出每个分类的概率值，我们选取概率最大的作为答案并进行对比
+
+代码内容具体在P18_HowToTrainModel中
