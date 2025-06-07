@@ -9,6 +9,9 @@ from torchvision import transforms
 import sys
 sys.path.append('../')
 from model import CIFAR_10
+#定义设备
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 #准备数据集
 train_data = torchvision.datasets.CIFAR10(root='../data', train=True,
                                           download=True, transform=transforms.ToTensor())
@@ -47,10 +50,10 @@ class Tudui(nn.Module):
 
 #或使用外部导入的model
 network = CIFAR_10()
-
+network= network.to(device)
 #创建损失函数
 loss_fn = nn.CrossEntropyLoss()
-
+loss_fn = loss_fn.to(device)
 #优化器
 lr = 1e-2
 optimizer = torch.optim.SGD(network.parameters(), lr)
@@ -70,6 +73,8 @@ for i in range(epoch):
     network.train()##
     for data in train_dataloader:
         imgs , targets = data
+        imgs = imgs.to(device)
+        targets = targets.to(device)
         outputs = network(imgs)
         loss = loss_fn(outputs, targets)
 
@@ -84,7 +89,7 @@ for i in range(epoch):
         total_train_step += 1
         if total_train_step % 100 == 0:
             end_time = time.time()
-            print("训练时间{}".format(end_time - start_time))
+            print("用时{}".format(end_time - start_time))
             print("训练次数：{}，Loss:{}".format(total_train_step, loss.item()))
             writer.add_scalar("train_loss", loss.item(), total_train_step)
 
@@ -96,6 +101,8 @@ for i in range(epoch):
     with torch.no_grad():
         for data in test_dataloader:
             imgs , targets = data
+            imgs = imgs.to(device)
+            targets = targets.to(device)
             outputs = network(imgs)
             loss = loss_fn(outputs, targets)
             total_test_loss += loss.item()

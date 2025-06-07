@@ -518,3 +518,18 @@ print(ouput.argmax(1))
 > 因为上述是个分类问题，会给出每个分类的概率值，我们选取概率最大的作为答案并进行对比
 
 代码内容具体在P18_HowToTrainModel中
+如果你的网络层有Dropout和Batchnorm层，可以使用model.train（）和model.eval（）  
+[具体参考torch.nn.module](https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module)
+![img_8.png](img_8.png)
+
+## 9.GPU加速训练
+1.方法1 使用.cuda  
+我们可以在模型、loss函数、取数据时（imgs和targets）当场调用.cuda()  
+记得使用if torch.cuda.is_available():判断有没有cuda
+![img_9.png](img_9.png)
+
+2.方法2 定义设备device
+先在上方定义device = torch.device("xxx")
+* 1.cpu 2.cuda 3.cuda:0(如果有多张显卡)
+![img_10.png](img_10.png)
+
